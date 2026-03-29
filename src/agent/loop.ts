@@ -36,11 +36,17 @@ export class AgentLoop {
     };
   }
 
+  /** Rebuild STM as a view over the current episodic trace. */
+  private async syncContext(): Promise<void> {
+    const events = await this.episodic.readAll();
+    this.context.hydrateFromEpisodic(events);
+  }
+
   /** Run one user turn through the full agentic loop. */
   async run(input: string, onEvent: (event: AgentEvent) => void): Promise<void> {
-    // Record + add to context
+    // Episodic is the source of truth — write first, then sync STM
     await this.episodic.append({ ts: Date.now(), type: "user_message", content: input });
-    this.context.addUser(input);
+    await this.syncContext();
 
     // ReAct loop — keep calling the LLM until no more tool calls
     while (true) {
@@ -88,17 +94,14 @@ export class AgentLoop {
         }
       }
 
-      // Add assistant response to context
-      this.context.addAssistant(response.content);
+      // Sync STM from episodic after all events for this LLM cycle are written
+      await this.syncContext();
 
       // If no tool calls, the turn is done
       if (toolResults.length === 0) {
         onEvent({ type: "done" });
         break;
       }
-
-      // Add tool results to context and loop
-      this.context.addToolResults(toolResults);
     }
   }
 
