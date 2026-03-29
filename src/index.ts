@@ -15,6 +15,7 @@ import { EpisodicStore } from "./memory/episodic.js";
 import { ContextWindow } from "./memory/context.js";
 import { AgentLoop } from "./agent/loop.js";
 import { startRepl } from "./ui/repl.js";
+import { buildSystemPrompt } from "./prompt.js";
 
 // ── Config ──────────────────────────────────────────────────────────────
 
@@ -61,8 +62,11 @@ if (events.length > 0) {
 // Record session start
 await episodic.append({ ts: Date.now(), type: "session_start", model: MODEL, cwd: process.cwd() });
 
-// System prompt
-const systemPrompt = `Concise coding assistant. cwd: ${process.cwd()}`;
+// Build system prompt (loads SOUL.md, IDENTITY.md, USER.md if they exist)
+const systemPrompt = await buildSystemPrompt({
+  cwd: process.cwd(),
+  dataDir: DATA_DIR,
+});
 
 // Agent loop
 const loop = new AgentLoop(provider, registry, context, episodic, systemPrompt);
