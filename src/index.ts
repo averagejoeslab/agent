@@ -48,8 +48,7 @@ registry.register(webFetchTool);
 
 // Memory
 const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
-const headroom = 5000; // safety buffer for system prompt + overhead
-const windowLimit = CONTEXT_WINDOW - MAX_TOKENS - headroom;
+const windowLimit = 155000; // short-term memory buffer in tokens
 const context = new ContextWindow(windowLimit);
 
 // Hydrate context from episodic trace (resume previous session)
