@@ -39,7 +39,7 @@ const provider = new AnthropicProvider(MODEL, API_KEY, MAX_TOKENS);
 
 // Memory
 const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
-const windowLimit = 50000; // short-term memory buffer in tokens
+const windowLimit = CONTEXT_WINDOW - MAX_TOKENS - 80000; // reserve headroom for system prompt + max output
 const context = new ContextWindow(windowLimit);
 const embeddingIndex = new EmbeddingIndex();
 
