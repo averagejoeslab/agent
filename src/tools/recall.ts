@@ -14,7 +14,7 @@ export interface RecallToolDeps {
 export function createRecallTool(deps: RecallToolDeps): Tool {
   return {
     name: "recall",
-    description: "Search episodic memory for past conversation turns that are no longer in the current context window. Uses semantic similarity to find relevant history. Use this when you need to remember something from earlier in the conversation that may have been evicted from short-term memory. Returns the most relevant past turns ranked by similarity.",
+    description: "Search past conversation history that has been evicted from the current context window. If the user references something you discussed before but you don't see it in the conversation, or if you need information from an earlier conversation to answer the current prompt, use this tool to recall it. The search is semantic — describe what you're looking for in natural language and the most relevant past turns will be returned.",
     params: [
       { name: "query", type: "string", description: "Semantic search query describing what you want to recall (e.g., 'the user's preferred coding style', 'earlier discussion about database schema')" },
       { name: "count", type: "string", description: "Number of results to return (default: 5)", required: false },
