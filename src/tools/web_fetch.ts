@@ -1,14 +1,12 @@
 import { NodeHtmlMarkdown } from "node-html-markdown";
-import { encoding_for_model } from "tiktoken";
+import { countStringTokens } from "../utils/tokens.js";
 import type { Tool } from "../types.js";
-
-const tokenizer = encoding_for_model("gpt-4");
 
 export const webFetchTool: Tool = {
   name: "web_fetch",
-  description: "Fetch a URL and return its content. HTML is converted to markdown. Content is automatically summarized if too long.",
+  description: "Fetch a URL and return its content. HTML pages are automatically converted to clean markdown. If the content exceeds 10,000 tokens it is summarized by an internal LLM call so the result stays digestible. Use web_search first to discover URLs, then web_fetch to retrieve the content.",
   params: [
-    { name: "url", type: "string", description: "URL to fetch" },
+    { name: "url", type: "string", description: "Full URL to fetch (must include protocol, e.g., 'https://example.com')" },
   ],
   async execute(args, context) {
     try {
@@ -35,7 +33,7 @@ export const webFetchTool: Tool = {
 
       // If provider is available and content is too long, summarize it
       if (context?.provider && context?.contextWindow) {
-        const tokenCount = tokenizer.encode(text).length;
+        const tokenCount = countStringTokens(text);
         
         // Determine if summarization is needed
         // We want to keep content under a reasonable size for the main agent
@@ -46,7 +44,7 @@ export const webFetchTool: Tool = {
             // Calculate optimal content size for summarization
             // Formula: contextWindow - systemPromptTokens - maxOutputTokens - safety margin
             const systemPrompt = "You are a content summarizer. Provide a comprehensive summary that preserves all key information, main points, and important details.";
-            const systemPromptTokens = tokenizer.encode(systemPrompt).length;
+            const systemPromptTokens = countStringTokens(systemPrompt);
             const summaryOutputTokens = 8192; // More space for comprehensive summary
             const safetyMargin = 1000;
             

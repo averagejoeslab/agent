@@ -69,7 +69,14 @@ const systemPrompt = buildSystemPrompt({
 });
 
 // Agent loop
-const loop = new AgentLoop(provider, registry, context, episodic, systemPrompt);
+const loop = new AgentLoop({
+  provider,
+  registry,
+  context,
+  episodic,
+  systemPrompt,
+  contextWindow: CONTEXT_WINDOW,
+});
 
 // Start REPL
 await startRepl(loop, context, MODEL);

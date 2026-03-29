@@ -1,5 +1,7 @@
 // Shared interfaces for the entire agent.
 
+// ── Messages ─────────────────────────────────────────────────────────────
+
 /** A single message in the conversation. */
 export interface Message {
   role: "user" | "assistant";
@@ -12,6 +14,8 @@ export type ContentBlock =
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string };
 
+// ── Episodic ─────────────────────────────────────────────────────────────
+
 /** An event in the episodic trace. */
 export type EpisodicEvent =
   | { ts: number; type: "session_start"; model: string; cwd: string }
@@ -20,6 +24,8 @@ export type EpisodicEvent =
   | { ts: number; type: "tool_call"; id: string; name: string; input: Record<string, unknown> }
   | { ts: number; type: "tool_result"; tool_use_id: string; content: string }
   | { ts: number; type: "session_clear" };
+
+// ── Provider ─────────────────────────────────────────────────────────────
 
 /** Tool definition for the API. */
 export interface ToolSchema {
@@ -32,6 +38,26 @@ export interface ToolSchema {
   };
 }
 
+/** Provider interface — how we talk to the LLM. */
+export interface Provider {
+  /** Streaming call with tool support (main agent loop). */
+  stream(
+    messages: Message[],
+    system: string,
+    tools: ToolSchema[],
+    onDelta: (delta: string) => void
+  ): Promise<{ content: ContentBlock[]; stop_reason: string }>;
+
+  /** Non-streaming call for internal use (tool summarization, etc). */
+  call(
+    messages: Message[],
+    system: string,
+    maxTokens?: number
+  ): Promise<{ content: ContentBlock[]; stop_reason: string }>;
+}
+
+// ── Agent Events ─────────────────────────────────────────────────────────
+
 /** What the agent loop emits to the UI. */
 export type AgentEvent =
   | { type: "text"; text: string }
@@ -41,15 +67,7 @@ export type AgentEvent =
   | { type: "error"; message: string }
   | { type: "done" };
 
-/** Provider interface — how we talk to the LLM. */
-export interface Provider {
-  stream(
-    messages: Message[],
-    system: string,
-    tools: ToolSchema[],
-    onDelta: (delta: string) => void
-  ): Promise<{ content: ContentBlock[]; stop_reason: string }>;
-}
+// ── Tools ────────────────────────────────────────────────────────────────
 
 /** Tool interface — what a tool looks like. */
 export interface Tool {
@@ -59,16 +77,15 @@ export interface Tool {
   execute(args: Record<string, string>, context?: ToolContext): Promise<string>;
 }
 
-/** Context passed to tools for advanced operations. */
-export interface ToolContext {
-  provider?: Provider;
-  maxTokens?: number;
-  contextWindow?: number;
-}
-
 export interface ToolParam {
   name: string;
   type: string;
   description?: string;
   required?: boolean;
+}
+
+/** Runtime context passed to tools that need LLM access or config. */
+export interface ToolContext {
+  provider: Provider;
+  contextWindow: number;
 }

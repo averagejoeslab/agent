@@ -2,10 +2,8 @@
 // The atomic unit is a TURN: everything from one user message through all
 // assistant responses and tool calls until the next user message.
 // Turns are never split. Either the whole turn is in the window or it's not.
-import { encoding_for_model } from "tiktoken";
+import { countMessageTokens } from "../utils/tokens.js";
 import type { Message, EpisodicEvent } from "../types.js";
-
-const tokenizer = encoding_for_model("gpt-4");
 
 /** A turn is a group of messages: user → assistant(+tools) → tool_results → assistant → ... */
 interface Turn {
@@ -40,15 +38,15 @@ export class ContextWindow {
   /** Add a user message — starts a new turn. */
   addUser(content: string): void {
     const msg: Message = { role: "user", content };
-    this.turns.push({ messages: [msg], tokens: countTokens(msg) });
-    this.tokenCount += countTokens(msg);
+    this.turns.push({ messages: [msg], tokens: countMessageTokens(msg) });
+    this.tokenCount += countMessageTokens(msg);
     this.evict();
   }
 
   /** Add an assistant message to the current turn. */
   addAssistant(content: Message["content"]): void {
     const msg: Message = { role: "assistant", content };
-    const tokens = countTokens(msg);
+    const tokens = countMessageTokens(msg);
     if (this.turns.length === 0) {
       this.turns.push({ messages: [msg], tokens });
     } else {
@@ -63,7 +61,7 @@ export class ContextWindow {
   /** Add tool results to the current turn. */
   addToolResults(results: Array<{ type: "tool_result"; tool_use_id: string; content: string }>): void {
     const msg: Message = { role: "user", content: results as unknown as string };
-    const tokens = countTokens(msg);
+    const tokens = countMessageTokens(msg);
     if (this.turns.length === 0) {
       this.turns.push({ messages: [msg], tokens });
     } else {
@@ -111,27 +109,7 @@ export class ContextWindow {
   }
 }
 
-/** Count tokens for a message using tiktoken. */
-function countTokens(msg: Message): number {
-  if (typeof msg.content === "string") {
-    return tokenizer.encode(msg.content).length;
-  }
 
-  let total = 0;
-  for (const block of msg.content) {
-    if (block.type === "text") {
-      total += tokenizer.encode(block.text).length;
-    } else if (block.type === "tool_use") {
-      total += tokenizer.encode(block.name).length;
-      total += tokenizer.encode(JSON.stringify(block.input)).length;
-      total += 10; // structure overhead
-    } else if (block.type === "tool_result") {
-      total += tokenizer.encode(block.content).length;
-      total += 10; // structure overhead
-    }
-  }
-  return total;
-}
 
 /** Convert episodic events into turns. Each turn starts with a user_message. */
 function eventsToTurns(events: EpisodicEvent[]): Turn[] {
@@ -146,14 +124,14 @@ function eventsToTurns(events: EpisodicEvent[]): Turn[] {
   function flushAssistant(): void {
     if (pendingAssistantBlocks.length > 0) {
       const msg: Message = { role: "assistant", content: pendingAssistantBlocks as Message["content"] };
-      const tokens = countTokens(msg);
+      const tokens = countMessageTokens(msg);
       currentMessages.push(msg);
       currentTokens += tokens;
       pendingAssistantBlocks = [];
     }
     if (pendingToolResults.length > 0) {
       const msg: Message = { role: "user", content: pendingToolResults as unknown as string };
-      const tokens = countTokens(msg);
+      const tokens = countMessageTokens(msg);
       currentMessages.push(msg);
       currentTokens += tokens;
       pendingToolResults = [];
@@ -176,7 +154,7 @@ function eventsToTurns(events: EpisodicEvent[]): Turn[] {
         finishTurn();
         const userMsg: Message = { role: "user", content: event.content };
         currentMessages.push(userMsg);
-        currentTokens += countTokens(userMsg);
+        currentTokens += countMessageTokens(userMsg);
         break;
 
       case "assistant_text":
@@ -196,7 +174,7 @@ function eventsToTurns(events: EpisodicEvent[]): Turn[] {
         // Flush the assistant message that contains the tool_use blocks
         if (pendingAssistantBlocks.length > 0) {
           const msg: Message = { role: "assistant", content: pendingAssistantBlocks as Message["content"] };
-          const tokens = countTokens(msg);
+          const tokens = countMessageTokens(msg);
           currentMessages.push(msg);
           currentTokens += tokens;
           pendingAssistantBlocks = [];

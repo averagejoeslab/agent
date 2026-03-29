@@ -7,19 +7,24 @@ Autonomous agent runtime with persistent episodic memory and streaming responses
 ```
 src/
 ├── index.ts              # Entry point — wires everything
-├── types.ts              # Shared interfaces
+├── types.ts              # Shared interfaces (Provider, Tool, Message, etc.)
+├── prompt.ts             # System prompt assembly
+├── utils/
+│   └── tokens.ts         # Shared tokenizer (countStringTokens, countMessageTokens)
 ├── provider/
-│   └── anthropic.ts      # Anthropic Claude API with SSE streaming
+│   └── anthropic.ts      # Anthropic Claude API (streaming + non-streaming)
 ├── agent/
 │   └── loop.ts           # ReAct loop (reusable, UI-agnostic)
 ├── tools/
-│   ├── base.ts           # Tool interface + ToolRegistry
+│   ├── base.ts           # ToolRegistry + schema builder
 │   ├── read.ts           # Read file with line numbers
 │   ├── write.ts          # Write/create file
 │   ├── edit.ts           # Find & replace in file
 │   ├── glob.ts           # Find files by pattern
 │   ├── grep.ts           # Search files by regex
-│   └── bash.ts           # Run shell commands
+│   ├── bash.ts           # Run shell commands
+│   ├── web_search.ts     # DuckDuckGo web search
+│   └── web_fetch.ts      # Fetch URL + LLM summarization
 ├── memory/
 │   ├── episodic.ts       # Append-only JSONL trace — everything forever
 │   └── context.ts        # Sliding window over episodic — what the LLM sees

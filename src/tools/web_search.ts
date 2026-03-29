@@ -2,9 +2,9 @@ import type { Tool } from "../types.js";
 
 export const webSearchTool: Tool = {
   name: "web_search",
-  description: "Search the web via DuckDuckGo. No API key required.",
+  description: "Search the web via DuckDuckGo. No API key required. Returns results with title, URL, and snippet for each match. Use this to find documentation, research topics, or discover URLs to fetch. For retrieving the actual content of a page, follow up with the web_fetch tool.",
   params: [
-    { name: "query", type: "string", description: "Search query string" },
+    { name: "query", type: "string", description: "Search query string (e.g., 'typescript async patterns', 'react hooks tutorial')" },
     { name: "count", type: "string", description: "Number of results to return (default: 5, max: 20)", required: false },
   ],
   async execute(args) {

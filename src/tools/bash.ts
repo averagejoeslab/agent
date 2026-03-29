@@ -3,9 +3,9 @@ import type { Tool } from "../types.js";
 
 export const bashTool: Tool = {
   name: "bash",
-  description: "Run a shell command. 30 second timeout.",
+  description: "Execute a shell command and return its output. Has a 30 second timeout. Use this for running build commands, git operations, installing packages, or any task that requires shell access. Stderr is returned on failure. For reading files prefer the read tool; for finding files prefer glob; for searching content prefer grep.",
   params: [
-    { name: "cmd", type: "string", description: "Shell command to execute" },
+    { name: "cmd", type: "string", description: "Shell command to execute (e.g., 'git status', 'npm install', 'ls -la')" },
   ],
   async execute(args) {
     try {
