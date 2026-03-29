@@ -36,27 +36,44 @@ export const webFetchTool: Tool = {
       // If provider is available and content is too long, summarize it
       if (context?.provider && context?.contextWindow) {
         const tokenCount = tokenizer.encode(text).length;
-        // Use 1/4 of context window as max for fetched content
-        const maxContentTokens = Math.floor(context.contextWindow / 4);
-
-        if (tokenCount > maxContentTokens) {
-          // Truncate to fit in context, leaving room for prompt
-          const truncateToChars = Math.floor(maxContentTokens * 3.5); // rough char estimate
-          const truncated = text.slice(0, truncateToChars);
-
+        
+        // Determine if summarization is needed
+        // We want to keep content under a reasonable size for the main agent
+        const reasonableMaxTokens = 10000; // Keep summaries digestible for main agent
+        
+        if (tokenCount > reasonableMaxTokens) {
           try {
-            // Ask LLM to summarize
+            // Calculate optimal content size for summarization
+            // Formula: contextWindow - systemPromptTokens - maxOutputTokens - safety margin
+            const systemPrompt = "You are a content summarizer. Provide a comprehensive summary that preserves all key information, main points, and important details.";
+            const systemPromptTokens = tokenizer.encode(systemPrompt).length;
+            const summaryOutputTokens = 8192; // More space for comprehensive summary
+            const safetyMargin = 1000;
+            
+            const maxContentTokensForSummarization = context.contextWindow - systemPromptTokens - summaryOutputTokens - safetyMargin;
+            
+            // Truncate content to fit if needed
+            let contentToSummarize = text;
+            if (tokenCount > maxContentTokensForSummarization) {
+              // Convert tokens to approximate character count (1 token ≈ 4 chars)
+              const maxChars = maxContentTokensForSummarization * 4;
+              contentToSummarize = text.slice(0, maxChars);
+            }
+
+            // Single LLM call to summarize - no history needed
             const result = await context.provider.call(
-              [{ role: "user", content: `Summarize the following content concisely, preserving key information:\n\n${truncated}` }],
-              "You are a concise content summarizer. Extract and preserve the most important information.",
-              Math.min(4096, context.maxTokens ?? 4096)
+              [{ role: "user", content: `Provide a comprehensive summary of the following content. Preserve all key information, main points, important details, and structure:\n\n${contentToSummarize}` }],
+              systemPrompt,
+              summaryOutputTokens
             );
 
             const summary = result.content.find(b => b.type === "text")?.text || "[Summary unavailable]";
-            return `[Content summarized due to length - original: ${tokenCount} tokens]\n\n${summary}`;
+            return `[Content summarized - original: ${tokenCount.toLocaleString()} tokens]\n\n${summary}`;
           } catch (err) {
             // If summarization fails, fall back to truncation
-            return `${truncated}\n\n[Content truncated - original was ${text.length} characters. Summarization failed: ${err instanceof Error ? err.message : String(err)}]`;
+            const fallbackChars = reasonableMaxTokens * 4;
+            const truncated = text.slice(0, fallbackChars);
+            return `${truncated}\n\n[Content truncated - original was ${tokenCount.toLocaleString()} tokens. Summarization failed: ${err instanceof Error ? err.message : String(err)}]`;
           }
         }
       }
