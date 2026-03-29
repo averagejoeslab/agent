@@ -19,10 +19,10 @@ import { buildSystemPrompt } from "./prompt.js";
 
 // ── Config ──────────────────────────────────────────────────────────────
 
-const MODEL = process.env.MODEL ?? "claude-sonnet-4-5-20250929";
+const MODEL = process.env.MODEL ?? "claude-opus-4-6";
 const API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? "16384", 10);
-const CONTEXT_WINDOW = parseInt(process.env.CONTEXT_WINDOW ?? "200000", 10);
+const CONTEXT_WINDOW = parseInt(process.env.CONTEXT_WINDOW ?? "1000000", 10); // 1M tokens
 const DATA_DIR = resolve(process.env.DATA_DIR ?? ".agent_data");
 
 if (!API_KEY) {

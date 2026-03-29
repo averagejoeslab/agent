@@ -1,6 +1,6 @@
 # agentos
 
-Autonomous agent runtime with persistent episodic memory and streaming responses. Built on Bun + TypeScript.
+Autonomous agent runtime with persistent episodic memory and streaming responses. Uses Claude Opus 4.6 with 1 million token context window. Built on Bun + TypeScript.
 
 ## Architecture
 
@@ -68,12 +68,19 @@ All via environment variables (or `.env` file):
 | Variable | Default | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
-| `MODEL` | `claude-sonnet-4-5-20250929` | Model ID |
+| `MODEL` | `claude-opus-4-6` | Model ID |
 | `MAX_TOKENS` | `16384` | Max output tokens per response |
-| `CONTEXT_WINDOW` | `200000` | Model's total context window in tokens |
+| `CONTEXT_WINDOW` | `1000000` | Model's total context window in tokens (1M for Opus 4.6) |
 | `DATA_DIR` | `.agent_data` | Directory for episodic trace |
 
 **Note:** Available context for messages = `CONTEXT_WINDOW - MAX_TOKENS - 5000` (headroom for system prompt and overhead)
+
+### Claude Opus 4.6 Features
+- **1 Million token context window** - Process massive codebases and documents
+- **Hybrid reasoning** - Extended thinking for complex tasks
+- **Advanced coding** - Production-ready code with minimal oversight
+- **AI agents** - Handles longer, more complex task chains
+- **Pricing:** $5/MTok input, $25/MTok output (90% savings with prompt caching)
 
 ## REPL commands
 
