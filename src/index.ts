@@ -62,9 +62,10 @@ if (events.length > 0) {
 // Record session start
 await episodic.append({ ts: Date.now(), type: "session_start", model: MODEL, cwd: process.cwd() });
 
-// Build system prompt
+// Build system prompt with available tools
 const systemPrompt = buildSystemPrompt({
   cwd: process.cwd(),
+  tools: registry.all(),
 });
 
 // Agent loop
