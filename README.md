@@ -76,9 +76,9 @@ All via environment variables (or `.env` file):
 | Variable | Default | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
-| `MODEL` | `claude-opus-4-6` | Model ID |
-| `MAX_TOKENS` | `16384` | Max output tokens per response |
-| `CONTEXT_WINDOW` | `1000000` | Model's total context window in tokens (1M for Opus 4.6) |
+| `MODEL` | `claude-sonnet-4-6` | Model ID |
+| `MAX_TOKENS` | `64000` | Max output tokens per response (64k for Sonnet 4.6) |
+| `CONTEXT_WINDOW` | `1000000` | Model's total context window in tokens (1M for Sonnet 4.6) |
 | `DATA_DIR` | `.agent_data` | Directory for episodic trace |
 
 **Note:** Available context for messages = `CONTEXT_WINDOW - MAX_TOKENS - 5000` (headroom for system prompt and overhead)

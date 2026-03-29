@@ -21,9 +21,9 @@ import { buildSystemPrompt } from "./prompt.js";
 
 // ── Config ──────────────────────────────────────────────────────────────
 
-const MODEL = process.env.MODEL ?? "claude-opus-4-6";
+const MODEL = process.env.MODEL ?? "claude-sonnet-4-6";
 const API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? "16384", 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? "64000", 10); // Sonnet 4.6 max output: 64k
 const CONTEXT_WINDOW = parseInt(process.env.CONTEXT_WINDOW ?? "1000000", 10); // 1M tokens
 const DATA_DIR = resolve(process.env.DATA_DIR ?? ".agent_data");
 
@@ -39,7 +39,8 @@ const provider = new AnthropicProvider(MODEL, API_KEY, MAX_TOKENS);
 
 // Memory
 const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
-const windowLimit = 155000; // short-term memory buffer in tokens
+const headroom = 5000; // system prompt + overhead
+const windowLimit = CONTEXT_WINDOW - MAX_TOKENS - headroom; // ~931,000 tokens
 const context = new ContextWindow(windowLimit);
 const embeddingIndex = new EmbeddingIndex();
 
