@@ -14,7 +14,7 @@ export interface RecallToolDeps {
 export function createRecallTool(deps: RecallToolDeps): Tool {
   return {
     name: "recall",
-    description: "Search past conversation history that has been evicted from the current context window. If the user references something you discussed before but you don't see it in the conversation, or if you need information from an earlier conversation to answer the current prompt, use this tool to recall it. The search is semantic — describe what you're looking for in natural language and the most relevant past turns will be returned.",
+    description: "Search past conversation history that has been evicted from the current context window. You MUST use this tool before saying you don't know or asking the user to repeat themselves if the information needed to answer their prompt is not visible in the current conversation. If the user references something discussed earlier but you don't see it in context, use this tool. The search is semantic — describe what you're looking for in natural language and the most relevant past turns will be returned.",
     params: [
       { name: "query", type: "string", description: "Semantic search query describing what you want to recall (e.g., 'the user's preferred coding style', 'earlier discussion about database schema')" },
       { name: "count", type: "string", description: "Number of results to return (default: 5)", required: false },
