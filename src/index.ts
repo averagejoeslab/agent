@@ -37,6 +37,12 @@ if (!API_KEY) {
 // Provider
 const provider = new AnthropicProvider(MODEL, API_KEY, MAX_TOKENS);
 
+// Memory
+const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
+const windowLimit = 155000; // short-term memory buffer in tokens
+const context = new ContextWindow(windowLimit);
+const embeddingIndex = new EmbeddingIndex();
+
 // Tools
 const registry = new ToolRegistry();
 registry.register(readTool);
@@ -48,12 +54,6 @@ registry.register(bashTool);
 registry.register(webSearchTool);
 registry.register(webFetchTool);
 registry.register(createRecallTool({ embeddingIndex, context, episodic }));
-
-// Memory
-const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
-const windowLimit = 155000; // short-term memory buffer in tokens
-const context = new ContextWindow(windowLimit);
-const embeddingIndex = new EmbeddingIndex();
 
 // Hydrate context from episodic trace (resume previous session)
 const events = await episodic.readAll();

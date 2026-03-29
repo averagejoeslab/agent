@@ -2,7 +2,7 @@
 // Uses fastembed for local embeddings (no API key needed).
 import type { Tool } from "../types.js";
 import type { EmbeddingIndex } from "../utils/embeddings.js";
-import type { ContextWindow } from "../memory/context.js";
+import { ContextWindow } from "../memory/context.js";
 import type { EpisodicStore } from "../memory/episodic.js";
 
 export interface RecallToolDeps {
@@ -55,5 +55,3 @@ export function createRecallTool(deps: RecallToolDeps): Tool {
   };
 }
 
-// Re-export ContextWindow for the static method
-export { ContextWindow } from "../memory/context.js";
