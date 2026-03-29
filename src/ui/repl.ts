@@ -23,7 +23,7 @@ export async function startRepl(loop: AgentLoop, context: ContextWindow, model: 
     const limit = context.getWindowLimit();
     const pct = limit > 0 ? Math.round((used / limit) * 100) : 0;
     const barWidth = 30;
-    const filled = Math.round((pct / 100) * barWidth);
+    const filled = Math.min(barWidth, Math.max(0, Math.round((pct / 100) * barWidth)));
     const bar = "█".repeat(filled) + "░".repeat(barWidth - filled);
     const color = pct > 80 ? ANSI.red : pct > 50 ? "\x1b[33m" : ANSI.green;
     return `${ANSI.dim}ctx ${color}${bar}${ANSI.reset}${ANSI.dim} ${used.toLocaleString()}/${limit.toLocaleString()} tokens (${pct}%)${ANSI.reset}`;
