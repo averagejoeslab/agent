@@ -1,15 +1,20 @@
 // Context window — sliding window over the episodic trace.
-// Converts episodic events into API messages that fit in the model's context window.
-// No compaction, no summarization. Old turns just slide off the left edge.
+// The atomic unit is a TURN: everything from one user message through all
+// assistant responses and tool calls until the next user message.
+// Turns are never split. Either the whole turn is in the window or it's not.
 import { encoding_for_model } from "tiktoken";
 import type { Message, EpisodicEvent } from "../types.js";
 
-// Initialize tokenizer once (expensive operation)
-// Using gpt-4 encoding as proxy for Claude (close enough, ~90-95% accurate)
 const tokenizer = encoding_for_model("gpt-4");
 
+/** A turn is a group of messages: user → assistant(+tools) → tool_results → assistant → ... */
+interface Turn {
+  messages: Message[];
+  tokens: number;
+}
+
 export class ContextWindow {
-  private messages: Message[] = [];
+  private turns: Turn[] = [];
   private tokenCount = 0;
 
   constructor(
@@ -17,9 +22,9 @@ export class ContextWindow {
     private windowLimit: number,
   ) {}
 
-  /** Get messages to send to the LLM. */
+  /** Get all messages to send to the LLM (flattened from turns). */
   getMessages(): Message[] {
-    return this.messages;
+    return this.turns.flatMap((t) => t.messages);
   }
 
   /** Current estimated token count. */
@@ -32,169 +37,186 @@ export class ContextWindow {
     return this.windowLimit;
   }
 
-  /** Add a user message. */
+  /** Add a user message — starts a new turn. */
   addUser(content: string): void {
     const msg: Message = { role: "user", content };
-    this.push(msg);
+    this.turns.push({ messages: [msg], tokens: countTokens(msg) });
+    this.tokenCount += countTokens(msg);
+    this.evict();
   }
 
-  /** Add an assistant message (full content blocks from API response). */
+  /** Add an assistant message to the current turn. */
   addAssistant(content: Message["content"]): void {
     const msg: Message = { role: "assistant", content };
-    this.push(msg);
-  }
-
-  /** Add tool results as a user message (API format). */
-  addToolResults(results: Array<{ type: "tool_result"; tool_use_id: string; content: string }>): void {
-    const msg: Message = { role: "user", content: results as unknown as string };
-    this.push(msg);
-  }
-
-  /** Clear the window (but episodic trace is untouched). */
-  clear(): void {
-    this.messages = [];
-    this.tokenCount = 0;
-  }
-
-  /** Hydrate from episodic events — load the tail that fits in the window. */
-  hydrateFromEpisodic(events: EpisodicEvent[]): void {
-    this.clear();
-
-    // Convert events to messages, then take the tail that fits
-    const allMessages = eventsToMessages(events);
-
-    // Walk backwards from the end, adding messages until we'd exceed the limit
-    const reversed: Message[] = [];
-    let tokens = 0;
-    for (let i = allMessages.length - 1; i >= 0; i--) {
-      const msgTokens = estimateTokens(allMessages[i]);
-      if (tokens + msgTokens > this.windowLimit) break;
-      reversed.push(allMessages[i]);
-      tokens += msgTokens;
+    const tokens = countTokens(msg);
+    if (this.turns.length === 0) {
+      this.turns.push({ messages: [msg], tokens });
+    } else {
+      const current = this.turns[this.turns.length - 1];
+      current.messages.push(msg);
+      current.tokens += tokens;
     }
-
-    this.messages = reversed.reverse();
-    this.tokenCount = tokens;
-  }
-
-  private push(msg: Message): void {
-    const tokens = estimateTokens(msg);
-    this.messages.push(msg);
     this.tokenCount += tokens;
     this.evict();
   }
 
-  /** Drop oldest turn pairs from the front until we're under the limit. */
-  private evict(): void {
-    while (this.tokenCount > this.windowLimit && this.messages.length > 2) {
-      // Always evict in pairs (user + assistant) to keep conversation coherent.
-      // If first message is user and second is assistant, drop both.
-      // Otherwise drop one at a time.
-      const first = this.messages[0];
-      const second = this.messages[1];
+  /** Add tool results to the current turn. */
+  addToolResults(results: Array<{ type: "tool_result"; tool_use_id: string; content: string }>): void {
+    const msg: Message = { role: "user", content: results as unknown as string };
+    const tokens = countTokens(msg);
+    if (this.turns.length === 0) {
+      this.turns.push({ messages: [msg], tokens });
+    } else {
+      const current = this.turns[this.turns.length - 1];
+      current.messages.push(msg);
+      current.tokens += tokens;
+    }
+    this.tokenCount += tokens;
+    this.evict();
+  }
 
-      if (first.role === "user" && second?.role === "assistant") {
-        this.tokenCount -= estimateTokens(first) + estimateTokens(second);
-        this.messages.splice(0, 2);
-      } else {
-        this.tokenCount -= estimateTokens(first);
-        this.messages.shift();
-      }
+  /** Clear the window (episodic trace untouched). */
+  clear(): void {
+    this.turns = [];
+    this.tokenCount = 0;
+  }
+
+  /** Hydrate from episodic events — load the tail that fits, turn by turn. */
+  hydrateFromEpisodic(events: EpisodicEvent[]): void {
+    this.clear();
+
+    // Convert events to turns
+    const allTurns = eventsToTurns(events);
+
+    // Walk backwards, adding whole turns until we'd exceed the limit
+    const reversed: Turn[] = [];
+    let tokens = 0;
+    for (let i = allTurns.length - 1; i >= 0; i--) {
+      if (tokens + allTurns[i].tokens > this.windowLimit) break;
+      reversed.push(allTurns[i]);
+      tokens += allTurns[i].tokens;
+    }
+
+    this.turns = reversed.reverse();
+    this.tokenCount = tokens;
+  }
+
+  /** Evict whole turns from the front until under the limit. */
+  private evict(): void {
+    // Always keep at least the current turn (last one)
+    while (this.tokenCount > this.windowLimit && this.turns.length > 1) {
+      const oldest = this.turns.shift()!;
+      this.tokenCount -= oldest.tokens;
     }
   }
 }
 
-/** Count tokens for a message using tiktoken (accurate). */
-function estimateTokens(msg: Message): number {
+/** Count tokens for a message using tiktoken. */
+function countTokens(msg: Message): number {
   if (typeof msg.content === "string") {
     return tokenizer.encode(msg.content).length;
   }
-  
+
   let total = 0;
   for (const block of msg.content) {
     if (block.type === "text") {
       total += tokenizer.encode(block.text).length;
     } else if (block.type === "tool_use") {
-      // Count tool name + serialized input
       total += tokenizer.encode(block.name).length;
       total += tokenizer.encode(JSON.stringify(block.input)).length;
-      // Add overhead for tool_use structure (~10 tokens)
-      total += 10;
+      total += 10; // structure overhead
     } else if (block.type === "tool_result") {
       total += tokenizer.encode(block.content).length;
-      // Add overhead for tool_result structure (~10 tokens)
-      total += 10;
+      total += 10; // structure overhead
     }
   }
   return total;
 }
 
-/** Convert episodic events back into API messages. */
-function eventsToMessages(events: EpisodicEvent[]): Message[] {
-  const messages: Message[] = [];
-  let pendingToolCalls: Array<{ type: "tool_use"; id: string; name: string; input: Record<string, unknown> }> = [];
+/** Convert episodic events into turns. Each turn starts with a user_message. */
+function eventsToTurns(events: EpisodicEvent[]): Turn[] {
+  const turns: Turn[] = [];
+  let currentMessages: Message[] = [];
+  let currentTokens = 0;
+
+  // Pending state for building messages from events
+  let pendingAssistantBlocks: Array<{ type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }> = [];
   let pendingToolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
-  let pendingText = "";
+
+  function flushAssistant(): void {
+    if (pendingAssistantBlocks.length > 0) {
+      const msg: Message = { role: "assistant", content: pendingAssistantBlocks as Message["content"] };
+      const tokens = countTokens(msg);
+      currentMessages.push(msg);
+      currentTokens += tokens;
+      pendingAssistantBlocks = [];
+    }
+    if (pendingToolResults.length > 0) {
+      const msg: Message = { role: "user", content: pendingToolResults as unknown as string };
+      const tokens = countTokens(msg);
+      currentMessages.push(msg);
+      currentTokens += tokens;
+      pendingToolResults = [];
+    }
+  }
+
+  function finishTurn(): void {
+    flushAssistant();
+    if (currentMessages.length > 0) {
+      turns.push({ messages: currentMessages, tokens: currentTokens });
+      currentMessages = [];
+      currentTokens = 0;
+    }
+  }
 
   for (const event of events) {
     switch (event.type) {
       case "user_message":
-        flush();
-        messages.push({ role: "user", content: event.content });
+        // New user message = new turn. Finish the previous one.
+        finishTurn();
+        const userMsg: Message = { role: "user", content: event.content };
+        currentMessages.push(userMsg);
+        currentTokens += countTokens(userMsg);
         break;
 
       case "assistant_text":
-        // If we have pending tool calls, flush them as an assistant message first
-        if (pendingToolCalls.length > 0) {
-          messages.push({ role: "assistant", content: [...pendingToolCalls] });
-          // Flush tool results as user message
-          if (pendingToolResults.length > 0) {
-            messages.push({ role: "user", content: pendingToolResults as unknown as string });
-            pendingToolResults = [];
-          }
-          pendingToolCalls = [];
+        // If we have pending tool calls + results, flush them first
+        // (this means the LLM responded with text after a tool round)
+        if (pendingToolResults.length > 0) {
+          flushAssistant();
         }
-        pendingText = event.content;
+        pendingAssistantBlocks.push({ type: "text", text: event.content });
         break;
 
       case "tool_call":
-        if (pendingText) {
-          pendingToolCalls.push({ type: "text" as never, text: pendingText } as never);
-          pendingText = "";
-        }
-        pendingToolCalls.push({ type: "tool_use", id: event.id, name: event.name, input: event.input });
+        pendingAssistantBlocks.push({ type: "tool_use", id: event.id, name: event.name, input: event.input });
         break;
 
       case "tool_result":
+        // Flush the assistant message that contains the tool_use blocks
+        if (pendingAssistantBlocks.length > 0) {
+          const msg: Message = { role: "assistant", content: pendingAssistantBlocks as Message["content"] };
+          const tokens = countTokens(msg);
+          currentMessages.push(msg);
+          currentTokens += tokens;
+          pendingAssistantBlocks = [];
+        }
         pendingToolResults.push({ type: "tool_result", tool_use_id: event.tool_use_id, content: event.content });
         break;
 
-      case "session_start":
       case "session_clear":
-        // These don't produce messages
+        // A clear means we discard everything before it
+        finishTurn();
+        turns.length = 0;
+        break;
+
+      case "session_start":
         break;
     }
   }
 
-  flush();
-  return messages;
+  // Finish any remaining turn
+  finishTurn();
 
-  function flush(): void {
-    if (pendingToolCalls.length > 0) {
-      messages.push({ role: "assistant", content: [...pendingToolCalls] });
-      if (pendingToolResults.length > 0) {
-        messages.push({ role: "user", content: pendingToolResults as unknown as string });
-        pendingToolResults = [];
-      }
-      pendingToolCalls = [];
-    }
-    if (pendingText) {
-      messages.push({ role: "assistant", content: pendingText });
-      pendingText = "";
-    }
-    if (pendingToolResults.length > 0) {
-      messages.push({ role: "user", content: pendingToolResults as unknown as string });
-      pendingToolResults = [];
-    }
-  }
+  return turns;
 }
