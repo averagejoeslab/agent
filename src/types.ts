@@ -60,7 +60,6 @@ export interface Provider {
 
 /** What the agent loop emits to the UI. */
 export type AgentEvent =
-  | { type: "text"; text: string }
   | { type: "text_delta"; delta: string }
   | { type: "tool_call"; name: string; preview: string }
   | { type: "tool_result"; name: string; preview: string }

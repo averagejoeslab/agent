@@ -43,8 +43,9 @@ export class ContextWindow {
   /** Add a user message — starts a new turn. */
   addUser(content: string): void {
     const msg: Message = { role: "user", content };
-    this.turns.push({ messages: [msg], tokens: countMessageTokens(msg) });
-    this.tokenCount += countMessageTokens(msg);
+    const tokens = countMessageTokens(msg);
+    this.turns.push({ messages: [msg], tokens });
+    this.tokenCount += tokens;
     this.evict();
   }
 
@@ -113,8 +114,6 @@ export class ContextWindow {
     }
   }
 }
-
-
 
 /** Convert episodic events into turns. Each turn starts with a user_message. */
 function eventsToTurns(events: EpisodicEvent[]): Turn[] {

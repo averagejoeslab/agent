@@ -34,7 +34,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     }
 
     parts.push("");
-    parts.push("When making function calls using tools that accept array or object parameters ensure those are structured using JSON. For example:");
+    parts.push("When making function calls using tools that accept array or object parameters ensure those are structured using JSON.");
     parts.push("If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).");
   }
 

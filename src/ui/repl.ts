@@ -54,10 +54,6 @@ export async function startRepl(loop: AgentLoop, context: ContextWindow, model: 
             }
             process.stdout.write(event.delta);
             break;
-          case "text":
-            // Fallback for non-streaming (shouldn't happen now)
-            console.log(`\n${ANSI.cyan}⏺${ANSI.reset} ${event.text}`);
-            break;
           case "tool_call":
             if (!firstDelta) {
               console.log(); // Newline after streaming text
