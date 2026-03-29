@@ -110,13 +110,3 @@ All via environment variables (or `.env` file):
 - **tiktoken** — Accurate token counting
 - **Anthropic API** — Claude models
 
-## Credits
-
-Based on [nanodeepagent](https://github.com/chrispangg/nanodeepagent) by Chris Pang.
-
-## Improvements over nanodeepagent
-
-- Real-time streaming responses (SSE)
-- Accurate token counting with tiktoken
-- Better context window management
-- Session resumption from episodic trace
