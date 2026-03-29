@@ -10,7 +10,9 @@ src/
 ├── types.ts              # Shared interfaces (Provider, Tool, Message, etc.)
 ├── prompt.ts             # System prompt assembly
 ├── utils/
-│   └── tokens.ts         # Shared tokenizer (countStringTokens, countMessageTokens)
+│   ├── tokens.ts         # Shared tokenizer (countStringTokens, countMessageTokens)
+│   ├── turns.ts          # Turn serialization (turnToText)
+│   └── embeddings.ts     # Embedding index (fastembed, cosine similarity)
 ├── provider/
 │   └── anthropic.ts      # Anthropic Claude API (streaming + non-streaming)
 ├── agent/
@@ -24,7 +26,8 @@ src/
 │   ├── grep.ts           # Search files by regex
 │   ├── bash.ts           # Run shell commands
 │   ├── web_search.ts     # DuckDuckGo web search
-│   └── web_fetch.ts      # Fetch URL + LLM summarization
+│   ├── web_fetch.ts      # Fetch URL + LLM summarization
+│   └── recall.ts         # Semantic search over episodic memory
 ├── memory/
 │   ├── episodic.ts       # Append-only JSONL trace — everything forever
 │   └── context.ts        # Sliding window over episodic — what the LLM sees
@@ -106,6 +109,7 @@ All via environment variables (or `.env` file):
 | `bash` | Run shell command (30s timeout) |
 | `web_search` | Search the web via DuckDuckGo (no API key required) |
 | `web_fetch` | Fetch URL content, converts HTML to markdown |
+| `recall` | Semantic search over episodic memory outside current context |
 
 ## Features
 

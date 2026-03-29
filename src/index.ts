@@ -11,8 +11,10 @@ import { grepTool } from "./tools/grep.js";
 import { bashTool } from "./tools/bash.js";
 import { webSearchTool } from "./tools/web_search.js";
 import { webFetchTool } from "./tools/web_fetch.js";
+import { createRecallTool } from "./tools/recall.js";
 import { EpisodicStore } from "./memory/episodic.js";
 import { ContextWindow } from "./memory/context.js";
+import { EmbeddingIndex } from "./utils/embeddings.js";
 import { AgentLoop } from "./agent/loop.js";
 import { startRepl } from "./ui/repl.js";
 import { buildSystemPrompt } from "./prompt.js";
@@ -45,11 +47,13 @@ registry.register(grepTool);
 registry.register(bashTool);
 registry.register(webSearchTool);
 registry.register(webFetchTool);
+registry.register(createRecallTool({ embeddingIndex, context, episodic }));
 
 // Memory
 const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));
 const windowLimit = 155000; // short-term memory buffer in tokens
 const context = new ContextWindow(windowLimit);
+const embeddingIndex = new EmbeddingIndex();
 
 // Hydrate context from episodic trace (resume previous session)
 const events = await episodic.readAll();

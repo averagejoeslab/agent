@@ -1,8 +1,8 @@
 node_modules/
 dist/
 .agent_data/
+local_cache/
+.build/
 *.log
 .env
 .DS_Store
--e 
-.env
