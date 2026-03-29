@@ -35,6 +35,11 @@ export class ContextWindow {
     return this.windowLimit;
   }
 
+  /** Number of turns currently in the window. */
+  getTurnCount(): number {
+    return this.turns.length;
+  }
+
   /** Add a user message — starts a new turn. */
   addUser(content: string): void {
     const msg: Message = { role: "user", content };

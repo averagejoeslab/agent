@@ -56,7 +56,7 @@ const context = new ContextWindow(windowLimit);
 const events = await episodic.readAll();
 if (events.length > 0) {
   context.hydrateFromEpisodic(events);
-  console.error(`Resumed ${events.length} events from episodic trace`);
+  console.error(`Refreshed ${context.getTurnCount()} turns from episodic trace`);
 }
 
 // Record session start
