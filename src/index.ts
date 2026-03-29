@@ -9,6 +9,8 @@ import { editTool } from "./tools/edit.js";
 import { globTool } from "./tools/glob.js";
 import { grepTool } from "./tools/grep.js";
 import { bashTool } from "./tools/bash.js";
+import { webSearchTool } from "./tools/web_search.js";
+import { webFetchTool } from "./tools/web_fetch.js";
 import { EpisodicStore } from "./memory/episodic.js";
 import { ContextWindow } from "./memory/context.js";
 import { AgentLoop } from "./agent/loop.js";
@@ -40,6 +42,8 @@ registry.register(editTool);
 registry.register(globTool);
 registry.register(grepTool);
 registry.register(bashTool);
+registry.register(webSearchTool);
+registry.register(webFetchTool);
 
 // Memory
 const episodic = new EpisodicStore(resolve(DATA_DIR, "trace.jsonl"));

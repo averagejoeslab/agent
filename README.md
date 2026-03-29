@@ -92,6 +92,8 @@ All via environment variables (or `.env` file):
 | `glob` | Find files by glob pattern |
 | `grep` | Search files by regex, returns matches with line numbers |
 | `bash` | Run shell command (30s timeout) |
+| `web_search` | Search the web via DuckDuckGo (no API key required) |
+| `web_fetch` | Fetch URL content, converts HTML to markdown |
 
 ## Features
 

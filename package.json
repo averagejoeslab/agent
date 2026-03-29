@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
+    "node-html-markdown": "^2.0.0",
     "tiktoken": "^1.0.17"
   },
   "devDependencies": {
