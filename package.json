@@ -1,0 +1,11 @@
+{
+  "name": "agentos",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "tiktoken": "^1.0.17"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+}

@@ -1,233 +1,122 @@
-# nanodeepagent
+# agentos
 
-![nanodeepagent](./screenshot.png)
-
-> **Credit**: This project was inspired by [nanocode](https://github.com/1rgs/nanocode) - thanks for the original idea!
->
-> **Want more?** If you're looking to build a more comprehensive version with a proper deep agent harness, check out [Deep Agent SDK](https://deepagentsdk.dev/docs).
-
-A minimal Claude Code alternative - an interactive terminal-based coding assistant with agentic tool use. Built with TypeScript and Bun, nanodeepagent provides a REPL interface where Claude can read, edit, search files, and execute shell commands autonomously.
-
-## Features
-
-- 🤖 **Agentic Loop**: Claude continuously executes tools until tasks complete
-- 📁 **File Operations**: Read, write, and edit files with line numbers
-- 🔍 **Code Search**: Grep patterns and glob file matching
-- 💻 **Shell Integration**: Execute bash commands directly
-- 🎨 **Rich Terminal UI**: ASCII art, colored output, and Markdown rendering
-- ⚡ **Bun Runtime**: Fast TypeScript execution and standalone binary compilation
-
-## Quick Start
-
-### Prerequisites
-
-- [Bun](https://bun.sh) v1.3.4 or later
-- Anthropic API key
-
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd nanodeepagent
-```
-
-1. Set up your API key:
-
-```bash
-echo "ANTHROPIC_API_KEY=your_key_here" > .env
-```
-
-### Running
-
-#### Development mode (interpreted)
-
-```bash
-bun nanodeepagent.ts
-```
-
-#### Compile to standalone binary
-
-```bash
-bun build nanodeepagent.ts --compile --outfile nanodeepagent
-./nanodeepagent
-```
-
-## Usage
-
-Once running, you'll see the nanodeepagent logo and a prompt (`❯`). Simply type your coding request, and Claude will use tools autonomously to complete the task.
-
-### REPL Commands
-
-- `/q` or `exit` - Quit the application
-- `/c` - Clear conversation history
-- `Enter` (empty) - Skip to next prompt
-
-### Example Session
-
-```
-❯ Create a hello world function in hello.ts
-
-⏺ Write(hello.ts)
-  ⎿  ok
-
-⏺ I've created a hello.ts file with a simple hello world function...
-```
-
-## Tool Capabilities
-
-nanodeepagent provides Claude with six powerful tools:
-
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `read` | Read file with line numbers | `path`, `offset?`, `limit?` |
-| `write` | Write content to file | `path`, `content` |
-| `edit` | Replace text in file | `path`, `old`, `new`, `all?` |
-| `glob` | Find files by pattern | `pat`, `path?` |
-| `grep` | Search files with regex | `pat`, `path?` |
-| `bash` | Execute shell commands | `cmd` |
-
-All tools execute with the current working directory as context.
+Autonomous agent runtime with persistent episodic memory and streaming responses. Built on Bun + TypeScript.
 
 ## Architecture
 
-### Single-File Design
+```
+src/
+├── index.ts              # Entry point — wires everything
+├── types.ts              # Shared interfaces
+├── provider/
+│   └── anthropic.ts      # Anthropic Claude API with SSE streaming
+├── agent/
+│   └── loop.ts           # ReAct loop (reusable, UI-agnostic)
+├── tools/
+│   ├── base.ts           # Tool interface + ToolRegistry
+│   ├── read.ts           # Read file with line numbers
+│   ├── write.ts          # Write/create file
+│   ├── edit.ts           # Find & replace in file
+│   ├── glob.ts           # Find files by pattern
+│   ├── grep.ts           # Search files by regex
+│   └── bash.ts           # Run shell commands
+├── memory/
+│   ├── episodic.ts       # Append-only JSONL trace — everything forever
+│   └── context.ts        # Sliding window over episodic — what the LLM sees
+└── ui/
+    └── repl.ts           # Terminal REPL with context usage bar
+```
 
-The entire application is contained in `nanodeepagent.ts` with clear sections:
+## Memory model
 
-- Constants (API URL, model, ANSI colors)
-- Type definitions (TypeScript interfaces)
-- Tool implementations (six file/system tools)
-- Tool registry (centralized metadata)
-- Helper functions (API calls, formatting)
-- Main REPL (interactive loop)
+**Episodic trace** (`.agent_data/trace.jsonl`) — append-only log of every event. Never deleted. Grows forever.
 
-### Agentic Loop
+**Context window** — sliding window over the tail of the episodic trace. Sized to fit within the model's context window after reserving space for output tokens and overhead. Old turns slide off the left edge as new turns are added. No compaction, no summarization. On restart, the context is hydrated from the trace (loads the most recent messages that fit).
 
-The core pattern:
+**Token counting** — Uses `tiktoken` (GPT-4 encoding) for accurate token estimation (~90-95% accurate for Claude). Much better than naive char/4 estimation.
 
-1. User provides request
-2. Claude responds with text and/or tool calls
-3. Tools execute and results are returned to Claude
-4. Loop continues until Claude responds without tools
-5. Task complete ✅
+**Streaming responses** — Text streams token-by-token via Server-Sent Events (SSE) for responsive real-time output. Complete responses are still logged to episodic trace.
 
-This allows Claude to chain multiple operations autonomously (e.g., read file → analyze → edit file → verify).
+```
+episodic trace (all time)
+[t1] [t2] [t3] [t4] [t5] [t6] [t7] [t8] [t9] [t10]
+                          ╰── context window ──╯
+                              what the LLM sees
+```
+
+## Installation
+
+```bash
+# Install dependencies
+bun install
+
+# Set your API key
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+```
+
+## Run
+
+```bash
+bun src/index.ts
+```
 
 ## Configuration
 
-### Model
+All via environment variables (or `.env` file):
 
-Default: `claude-sonnet-4-5`
+| Variable | Default | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `MODEL` | `claude-sonnet-4-5-20250929` | Model ID |
+| `MAX_TOKENS` | `16384` | Max output tokens per response |
+| `CONTEXT_WINDOW` | `200000` | Model's total context window in tokens |
+| `DATA_DIR` | `.agent_data` | Directory for episodic trace |
 
-To change the model, edit the `MODEL` constant in `nanodeepagent.ts`:
+**Note:** Available context for messages = `CONTEXT_WINDOW - MAX_TOKENS - 5000` (headroom for system prompt and overhead)
 
-```typescript
-const MODEL = "claude-sonnet-4-5";
-```
+## REPL commands
 
-### API Endpoint
+| Command | What it does |
+|---|---|
+| `/c` | Clear context window (trace untouched) |
+| `/q` or `exit` | Quit |
 
-The application uses Anthropic's Messages API:
+## Tools
 
-```
-https://api.anthropic.com/v1/messages
-```
+| Tool | Description |
+|---|---|
+| `read` | Read file with line numbers, optional offset/limit |
+| `write` | Write/create file, creates parent dirs |
+| `edit` | Find & replace in file, optional replace-all |
+| `glob` | Find files by glob pattern |
+| `grep` | Search files by regex, returns matches with line numbers |
+| `bash` | Run shell command (30s timeout) |
 
-### Environment Variables
+## Features
 
-- `ANTHROPIC_API_KEY` (required) - Your Anthropic API key
+- ✅ **Persistent memory** — Full conversation history in append-only trace
+- ✅ **Session resumption** — Picks up where you left off across restarts
+- ✅ **Streaming responses** — Real-time token-by-token output
+- ✅ **Accurate token counting** — tiktoken-based estimation (~90-95% accurate)
+- ✅ **Automatic context management** — Sliding window with smart eviction
+- ✅ **File system tools** — Read, write, edit, glob, grep
+- ✅ **Shell execution** — Run bash commands with 30s timeout
+- ✅ **Progress bar** — Visual context usage indicator
 
-## Development
+## Dependencies
 
-### Type Checking
+- **Bun** — JavaScript runtime (tested on 1.3.9+)
+- **tiktoken** — Accurate token counting
+- **Anthropic API** — Claude models
 
-```bash
-bun --print "import './nanodeepagent.ts'"
-```
+## Credits
 
-### Building for Different Platforms
+Based on [nanodeepagent](https://github.com/chrispangg/nanodeepagent) by Chris Pang.
 
-```bash
-# macOS ARM64 (default on Apple Silicon)
-bun build nanodeepagent.ts --compile --outfile nanodeepagent
+## Improvements over nanodeepagent
 
-# x86_64 (Intel)
-bun build nanodeepagent.ts --compile --target=x86_64 --outfile nanodeepagent-x64
-
-# Linux ARM64
-bun build nanodeepagent.ts --compile --target=linux-arm64 --outfile nanodeepagent-linux-arm64
-```
-
-### Project Structure
-
-```
-nanodeepagent/
-├── nanodeepagent.ts    # Main application (single file)
-├── package.json        # Dependencies
-├── tsconfig.json       # TypeScript config
-├── .env               # API key (gitignored)
-├── README.md          # This file
-└── CLAUDE.md          # Developer guide for Claude Code
-```
-
-## Technical Details
-
-### Dependencies
-
-- `@types/bun` - Bun TypeScript definitions
-- `typescript` ^5 - TypeScript compiler
-
-### Runtime
-
-Built with Bun, which provides:
-
-- Fast TypeScript execution
-- Built-in bundler and compiler
-- Native APIs (Glob, file I/O)
-- Standalone binary compilation (~60MB, runtime included)
-
-### API Integration
-
-- **Max tokens**: 8192
-- **System prompt**: Includes current working directory
-- **Tool schema**: Auto-generated from tool registry
-- **Message format**: Anthropic Messages API with tool use
-
-## Error Handling
-
-- Tool errors return as strings (prefixed with `"error: "`)
-- API errors display with status and message
-- Shell commands timeout after 30 seconds
-- File operations handle permissions gracefully
-
-## Limitations
-
-- Single conversation thread (use `/c` to clear)
-- No conversation persistence between sessions
-- Tool results limited (grep: 50 matches, text previews: 60 chars)
-- Shell commands limited to 30-second execution
-- No streaming output (results display after completion)
-
-## Contributing
-
-This is a minimal implementation designed for simplicity and clarity. The entire codebase is ~375 lines in a single file, making it easy to understand, modify, and extend.
-
-To add a new tool:
-
-1. Implement the function
-2. Add entry to `TOOLS` registry
-3. Claude will automatically have access
-
-## License
-
-[Your license here]
-
-## Acknowledgments
-
-Inspired by Claude Code and built as a demonstration of agentic tool use with the Anthropic API.
-
----
-
-**Model**: claude-sonnet-4-5 | **Runtime**: Bun | **Language**: TypeScript
+- Real-time streaming responses (SSE)
+- Accurate token counting with tiktoken
+- Better context window management
+- Session resumption from episodic trace
