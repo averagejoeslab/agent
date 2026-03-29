@@ -2,10 +2,10 @@ import type { Tool } from "../types.js";
 
 export const webSearchTool: Tool = {
   name: "web_search",
-  description: "Search the web via DuckDuckGo. No API key required. Returns results with title, URL, and snippet for each match. Use this to find documentation, research topics, or discover URLs to fetch. For retrieving the actual content of a page, follow up with the web_fetch tool.",
+  description: "Search the web via DuckDuckGo. No API key required. Returns title, URL, and snippet for each result. Use this to discover URLs, find documentation, or research topics. Always follow up with web_fetch to get the actual page content — snippets alone are rarely sufficient. Do NOT use bash to search the web.",
   params: [
-    { name: "query", type: "string", description: "Search query string (e.g., 'typescript async patterns', 'react hooks tutorial')" },
-    { name: "count", type: "string", description: "Number of results to return (default: 5, max: 20)", required: false },
+    { name: "query", type: "string", description: "Search query. Examples: 'typescript satisfies keyword', 'bun sqlite api docs', 'anthropic claude tool use', 'react server components tutorial'" },
+    { name: "count", type: "string", description: "Results to return (default: 5, max: 20). Use 10+ for broad research, 3-5 for targeted lookups.", required: false },
   ],
   async execute(args) {
     const query = encodeURIComponent(args.query);

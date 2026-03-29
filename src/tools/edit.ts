@@ -3,12 +3,12 @@ import type { Tool } from "../types.js";
 
 export const editTool: Tool = {
   name: "edit",
-  description: "Make targeted edits to an existing file by replacing a specific string. The old string must match exactly (including whitespace and indentation). If the old string appears multiple times, the edit will fail unless all=true is set. This is safer than write for modifying existing files because it only changes the targeted section. Returns an error if the old string is not found.",
+  description: "Make targeted edits to an existing file by replacing a specific string. Safer than write for modifying existing files. The old string must match exactly — copy it directly from the file using the read tool first to avoid whitespace or indentation errors. Returns an error if old string is not found or appears multiple times (unless all='true').",
   params: [
-    { name: "path", type: "string", description: "File path to edit (relative to cwd or absolute)" },
-    { name: "old", type: "string", description: "Exact string to find in the file. Must match precisely including whitespace." },
-    { name: "new", type: "string", description: "Replacement string. Can be empty to delete the old string." },
-    { name: "all", type: "string", description: "Set to 'true' to replace all occurrences. Default replaces only the first and fails if multiple matches exist.", required: false },
+    { name: "path", type: "string", description: "Absolute file path to edit (e.g., '/Users/dev/project/src/index.ts'). Relative paths are resolved from cwd." },
+    { name: "old", type: "string", description: "Exact string to replace. Must match character-for-character including all whitespace and indentation. Use the read tool first to copy the exact string." },
+    { name: "new", type: "string", description: "Replacement string. Use empty string to delete old. Must preserve surrounding code's indentation and style." },
+    { name: "all", type: "string", description: "Set to 'true' to replace all occurrences. Omit or set 'false' to replace only the first (fails if multiple matches found).", required: false },
   ],
   async execute(args) {
     const content = await readFile(args.path, "utf-8");

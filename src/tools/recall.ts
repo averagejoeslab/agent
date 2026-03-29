@@ -14,10 +14,10 @@ export interface RecallToolDeps {
 export function createRecallTool(deps: RecallToolDeps): Tool {
   return {
     name: "recall",
-    description: "Search past conversation history that has been evicted from the current context window. You MUST use this tool before saying you don't know or asking the user to repeat themselves if the information needed to answer their prompt is not visible in the current conversation. If the user references something discussed earlier but you don't see it in context, use this tool. The search is semantic — describe what you're looking for in natural language and the most relevant past turns will be returned.",
+    description: "Search past conversation history that has been evicted from the current context window. You MUST use this tool before saying you don't know or asking the user to repeat themselves if the information needed to answer their prompt is not visible in the current conversation. If the user references something discussed earlier but you don't see it in context, use this tool. The search is semantic — describe what you're looking for in natural language. Returns the most relevant past turns ranked by similarity score.",
     params: [
-      { name: "query", type: "string", description: "Semantic search query describing what you want to recall (e.g., 'the user's preferred coding style', 'earlier discussion about database schema')" },
-      { name: "count", type: "string", description: "Number of results to return (default: 5)", required: false },
+      { name: "query", type: "string", description: "Natural language description of what to recall. Be specific for better results. Examples: 'user preferred coding style and formatting rules', 'earlier discussion about PostgreSQL database schema', 'API key or credentials the user mentioned', 'error message or bug we were debugging'" },
+      { name: "count", type: "string", description: "Number of past turns to return (default: 5). Use 3 for targeted recall, 10 for broad research over past conversation.", required: false },
     ],
     async execute(args) {
       const count = parseInt(args.count ?? "5", 10);

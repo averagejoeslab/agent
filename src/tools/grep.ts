@@ -3,10 +3,10 @@ import type { Tool } from "../types.js";
 
 export const grepTool: Tool = {
   name: "grep",
-  description: "Search across all files for lines matching a regex pattern. Returns results in the format 'file:line:content'. Skips node_modules and .git directories. Results are capped at 50 matches. Use this to find usages, definitions, or patterns across a codebase. For searching within a single known file, use the read tool instead.",
+  description: "Search across all files for lines matching a regex pattern. Returns results as 'file:line:content'. Skips node_modules and .git. Capped at 50 matches. Use this to find function definitions, symbol usages, or patterns across a codebase. For searching within a single known file use the read tool. For finding files by name/extension use glob instead.",
   params: [
-    { name: "pat", type: "string", description: "JavaScript regex pattern to search for (e.g., 'function\\s+main', 'TODO', 'import.*from')" },
-    { name: "path", type: "string", description: "Base directory to search from (default: current working directory)", required: false },
+    { name: "pat", type: "string", description: "JavaScript regex to search for. Examples: 'export.*function' (exported functions), 'TODO|FIXME' (code notes), 'import.*from.*react' (react imports), 'class\\s+\\w+' (class definitions)" },
+    { name: "path", type: "string", description: "Base directory to search from. Defaults to cwd. Narrow scope for faster results, e.g., 'src' to search only under src/.", required: false },
   ],
   async execute(args) {
     const pattern = new RegExp(args.pat);

@@ -4,9 +4,9 @@ import type { Tool } from "../types.js";
 
 export const webFetchTool: Tool = {
   name: "web_fetch",
-  description: "Fetch a URL and return its content. HTML pages are automatically converted to clean markdown. If the content exceeds 10,000 tokens it is summarized by an internal LLM call so the result stays digestible. Use web_search first to discover URLs, then web_fetch to retrieve the content.",
+  description: "Fetch a URL and return its content as markdown. HTML is automatically converted; JSON and plain text are returned as-is. Content over 10,000 tokens is summarized by an internal LLM call. Use web_search first to find URLs, then web_fetch to read them. Do NOT use bash+curl to fetch URLs — use this tool instead.",
   params: [
-    { name: "url", type: "string", description: "Full URL to fetch (must include protocol, e.g., 'https://example.com')" },
+    { name: "url", type: "string", description: "Full URL including protocol. Examples: 'https://docs.anthropic.com/en/docs/tool-use', 'https://bun.sh/docs/api/sqlite', 'https://raw.githubusercontent.com/org/repo/main/README.md'" },
   ],
   async execute(args, context) {
     try {

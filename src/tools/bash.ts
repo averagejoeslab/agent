@@ -3,9 +3,9 @@ import type { Tool } from "../types.js";
 
 export const bashTool: Tool = {
   name: "bash",
-  description: "Execute a shell command and return its output. Has a 30 second timeout. Use this for running build commands, git operations, installing packages, or any task that requires shell access. Stderr is returned on failure. For reading files prefer the read tool; for finding files prefer glob; for searching content prefer grep.",
+  description: "Execute a shell command and return its output. 30 second timeout. Use for git operations, running builds, installing packages, or tasks requiring shell access. Stderr is returned on failure. Do NOT use this to read files (use read), find files (use glob), search content (use grep), or search the web (use web_search) — use the dedicated tools instead.",
   params: [
-    { name: "cmd", type: "string", description: "Shell command to execute (e.g., 'git status', 'npm install', 'ls -la')" },
+    { name: "cmd", type: "string", description: "Shell command to execute. Examples: 'git status', 'bun install', 'bun run build', 'git log --oneline -10', 'cat package.json | head -20'" },
   ],
   async execute(args) {
     try {
