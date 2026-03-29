@@ -62,10 +62,9 @@ if (events.length > 0) {
 // Record session start
 await episodic.append({ ts: Date.now(), type: "session_start", model: MODEL, cwd: process.cwd() });
 
-// Build system prompt (loads SOUL.md, IDENTITY.md, USER.md if they exist)
-const systemPrompt = await buildSystemPrompt({
+// Build system prompt
+const systemPrompt = buildSystemPrompt({
   cwd: process.cwd(),
-  dataDir: DATA_DIR,
 });
 
 // Agent loop
