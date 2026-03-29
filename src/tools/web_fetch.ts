@@ -1,13 +1,16 @@
 import { NodeHtmlMarkdown } from "node-html-markdown";
+import { encoding_for_model } from "tiktoken";
 import type { Tool } from "../types.js";
+
+const tokenizer = encoding_for_model("gpt-4");
 
 export const webFetchTool: Tool = {
   name: "web_fetch",
-  description: "Fetch a URL and return its content. HTML is converted to markdown for readability.",
+  description: "Fetch a URL and return its content. HTML is converted to markdown. Content is automatically summarized if too long.",
   params: [
     { name: "url", type: "string", description: "URL to fetch" },
   ],
-  async execute(args) {
+  async execute(args, context) {
     try {
       const res = await fetch(args.url, {
         headers: { "User-Agent": "Mozilla/5.0" },
@@ -30,9 +33,32 @@ export const webFetchTool: Tool = {
         text = await res.text();
       }
 
-      // Truncate if too long (keep first 50k characters)
-      if (text.length > 50000) {
-        text = text.slice(0, 50000) + "\n\n[Content truncated - original was " + text.length + " characters]";
+      // If provider is available and content is too long, summarize it
+      if (context?.provider && context?.contextWindow) {
+        const tokenCount = tokenizer.encode(text).length;
+        // Use 1/4 of context window as max for fetched content
+        const maxContentTokens = Math.floor(context.contextWindow / 4);
+
+        if (tokenCount > maxContentTokens) {
+          // Truncate to fit in context, leaving room for prompt
+          const truncateToChars = Math.floor(maxContentTokens * 3.5); // rough char estimate
+          const truncated = text.slice(0, truncateToChars);
+
+          try {
+            // Ask LLM to summarize
+            const result = await context.provider.call(
+              [{ role: "user", content: `Summarize the following content concisely, preserving key information:\n\n${truncated}` }],
+              "You are a concise content summarizer. Extract and preserve the most important information.",
+              Math.min(4096, context.maxTokens ?? 4096)
+            );
+
+            const summary = result.content.find(b => b.type === "text")?.text || "[Summary unavailable]";
+            return `[Content summarized due to length - original: ${tokenCount} tokens]\n\n${summary}`;
+          } catch (err) {
+            // If summarization fails, fall back to truncation
+            return `${truncated}\n\n[Content truncated - original was ${text.length} characters. Summarization failed: ${err instanceof Error ? err.message : String(err)}]`;
+          }
+        }
       }
 
       return text;

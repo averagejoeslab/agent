@@ -56,7 +56,14 @@ export interface Tool {
   name: string;
   description: string;
   params: ToolParam[];
-  execute(args: Record<string, string>): Promise<string>;
+  execute(args: Record<string, string>, context?: ToolContext): Promise<string>;
+}
+
+/** Context passed to tools for advanced operations. */
+export interface ToolContext {
+  provider?: Provider;
+  maxTokens?: number;
+  contextWindow?: number;
 }
 
 export interface ToolParam {

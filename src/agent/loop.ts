@@ -50,14 +50,18 @@ export class AgentLoop {
             id: block.id, name: block.name, input: block.input,
           });
 
-          // Execute the tool
+          // Execute the tool with context
           const tool = this.registry.get(block.name);
           let result: string;
           if (!tool) {
             result = `error: unknown tool "${block.name}"`;
           } else {
             try {
-              result = await tool.execute(block.input as Record<string, string>);
+              result = await tool.execute(block.input as Record<string, string>, {
+                provider: this.provider,
+                maxTokens: this.provider instanceof Object && 'maxTokens' in this.provider ? (this.provider as any).maxTokens : undefined,
+                contextWindow: this.context.getWindowLimit(),
+              });
             } catch (err) {
               result = `error: ${err instanceof Error ? err.message : String(err)}`;
             }

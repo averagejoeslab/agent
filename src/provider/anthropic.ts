@@ -10,6 +10,40 @@ export class AnthropicProvider implements Provider {
     private maxTokens: number = 16384,
   ) {}
 
+  /** Non-streaming call for internal use (like tool summarization). */
+  async call(
+    messages: Message[],
+    system: string,
+    maxTokens?: number
+  ): Promise<{ content: ContentBlock[]; stop_reason: string }> {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: maxTokens ?? this.maxTokens,
+        system,
+        messages,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API error ${response.status}: ${body}`);
+    }
+
+    const data = await response.json();
+    return {
+      content: data.content || [],
+      stop_reason: data.stop_reason || "end_turn",
+    };
+  }
+
   async stream(
     messages: Message[],
     system: string,
